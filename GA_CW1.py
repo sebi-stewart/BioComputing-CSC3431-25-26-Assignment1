@@ -1,3 +1,4 @@
+import itertools
 import os
 import random
 import statistics
@@ -84,6 +85,7 @@ def runGA(params):
     return best.fitness.values[0],best_it,convergence,confidence_interval
 
 def determine_convergence(population):
+    return 0
     dimension_count = len(population[0][:])
 
     # compute the average distance from the mean position - std deviation - in each dimension
@@ -94,6 +96,7 @@ def determine_convergence(population):
     return statistics.mean(std_deviations)
 
 def determine_confidence_interval(population, confidence=0.95):
+    return 0
     a = 1.0 * np.array([ind.fitness.values[0] for ind in population])
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)
@@ -142,7 +145,7 @@ def runExperiment(params,logFile,label):
 # Create an empty data frame to initialise the CSV file
 # by Convergence we mean the standard deviation of all points in each dimensions. The average value of each dimensional std. dev is taken for a single convergence number
 df = pd.DataFrame(columns=["It","AveBestFitness","AvgConvergence", "ConfidenceInterval", "ExperimentName"])
-logName = "pmut_ind"
+logName = "brute_force_sweep"
 outdir = "GA_log"
 logFile = f"{outdir}/trace-{logName}.csv"
 if not os.path.exists(outdir):
@@ -153,9 +156,17 @@ df.to_csv(logFile,index=False)
 params = initParams()
 
 # As an example, we will perform a parameter sweep for the probability of crossover
-pcross = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-pmut_ind = [.0, .1, .3, .5, .7, .9]
-for prob in pmut_ind:
-    params["pcross"] = prob
-    runExperiment(params,logFile,"pmut_ind={}".format(prob))
+pcross = [0.5, 0.6, 0.7, 0.8, 0.9]
+pmut_ind = [.5, .6, .7, .8, .85, .9, .95, .99]
+pmut_gene = [.005, .025, .05, .1, .25]
+
+pmut_intersect_experiments = itertools.product((.3, .8, .9, .95), (.05, .1, .25, ))
+
+brute_force_sweep = itertools.product(pcross, pmut_ind, pmut_gene)
+# print(len(list(brute_force_sweep)))
+for pcross_prob, pmut_ind_prob, pmut_gene_prob in brute_force_sweep:
+    params["pcross"] = pcross_prob
+    params["pmut_ind"] = pmut_ind_prob
+    params["pmut_gene"] = pmut_gene_prob
+    runExperiment(params,logFile,"pcross={} | pmut_ind={} | pmut_gene{}".format(pcross_prob, pmut_ind_prob, pmut_gene_prob))
 
