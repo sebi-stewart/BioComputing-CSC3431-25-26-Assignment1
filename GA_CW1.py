@@ -54,8 +54,8 @@ def runGA(params):
     hof.update(population)
 
     best_it = []
-    convergence = []
-    confidence_interval = []
+    # convergence = []
+    # confidence_interval = []
     # Number of iterations of the evolutionary cycle
     NGEN=params["iterations"]
     for gen in range(NGEN):
@@ -74,15 +74,15 @@ def runGA(params):
 
         best_it.append(top1[0].fitness.values[0])
 
-        current_convergence = determine_convergence(population)
-        convergence.append(current_convergence)
-
-        current_confidence_interval = determine_confidence_interval(population)
-        confidence_interval.append(current_confidence_interval)
+        # current_convergence = determine_convergence(population)
+        # convergence.append(current_convergence)
+        #
+        # current_confidence_interval = determine_confidence_interval(population)
+        # confidence_interval.append(current_confidence_interval)
 
     best = hof[0]
     #print("Best individual {} -> fitness: {}".format(best,best.fitness.values[0]))
-    return best.fitness.values[0],best_it,convergence,confidence_interval
+    return best.fitness.values[0],best_it #,convergence,confidence_interval
 
 def determine_convergence(population):
     return 0
@@ -104,6 +104,7 @@ def determine_confidence_interval(population, confidence=0.95):
     return m, m - h, m + h
 
 
+# noinspection DuplicatedCode
 def runExperiment(params,logFile,label):
     # time the script
     start = time.time()
@@ -111,11 +112,12 @@ def runExperiment(params,logFile,label):
     nreps = 30
     best_reps = []
     best_its = {}
-    convergences = {}
-    confidence_intervals = {}
+    # convergences = {}
+    # confidence_intervals = {}
 
     for rep in range(nreps):
-        bestFit,best_it,convergence,confidence_interval = runGA(params)
+        # bestFit,best_it,convergence,confidence_interval = runGA(params)
+        bestFit,best_it = runGA(params)
         #print("Best fitness of repetiton {} : {}".format(rep,bestFit))
         best_reps.append(bestFit)
 
@@ -123,15 +125,16 @@ def runExperiment(params,logFile,label):
             best_its.setdefault(it, [])
             best_its[it].append(best_it[it])
 
-            convergences.setdefault(it, [])
-            convergences[it].append(convergence[it])
-
-            confidence_intervals.setdefault(it, [])
-            confidence_intervals[it].append(confidence_interval[it])
+            # convergences.setdefault(it, [])
+            # convergences[it].append(convergence[it])
+            #
+            # confidence_intervals.setdefault(it, [])
+            # confidence_intervals[it].append(confidence_interval[it])
 
     trace = []
     for it in sorted(best_its.keys()):
-        trace.append([it,np.mean(best_its[it]),np.mean(convergences[it]),np.mean(confidence_intervals[it]),label])
+        # trace.append([it,np.mean(best_its[it]),np.mean(convergences[it]),np.mean(confidence_intervals[it]),label])
+        trace.append([it,np.mean(best_its[it]),label])
 
     df = pd.DataFrame(trace)
     df.to_csv(logFile,header=False,index=False,mode="a")
@@ -144,9 +147,10 @@ def runExperiment(params,logFile,label):
 
 # Create an empty data frame to initialise the CSV file
 # by Convergence we mean the standard deviation of all points in each dimensions. The average value of each dimensional std. dev is taken for a single convergence number
-df = pd.DataFrame(columns=["It","AveBestFitness","AvgConvergence", "ConfidenceInterval", "ExperimentName"])
-logName = "brute_force_sweep"
-outdir = "GA_log"
+# df = pd.DataFrame(columns=["It","AveBestFitness","AvgConvergence", "ConfidenceInterval", "ExperimentName"])
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+logName = "sigma"
+outdir = "GA_Second-Sweep_Logs"
 logFile = f"{outdir}/trace-{logName}.csv"
 if not os.path.exists(outdir):
     os.mkdir(outdir)
@@ -156,17 +160,14 @@ df.to_csv(logFile,index=False)
 params = initParams()
 
 # As an example, we will perform a parameter sweep for the probability of crossover
-pcross = [0.5, 0.6, 0.7, 0.8, 0.9]
-pmut_ind = [.5, .6, .7, .8, .85, .9, .95, .99]
-pmut_gene = [.005, .025, .05, .1, .25]
+popsize_iterations_vals = [(100000, 1), (5000, 2), (2500, 4), (1000, 10), (500, 20), (250, 40), (100, 100), (50, 200), (25, 400), (10, 1000)]
+pcross_vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
+pmut_ind_vals = [0.01, 0.1, 0.3, .5, .6, .7, 7.5, .8, .85, .9, .95, .99]
+pmut_gene_vals = [.001, .0025, .005, .01, .025, .05, .1, .25, .5]
+tournsize_vals = [1, 2, 3, 5, 10, 25, 50, 75, 90]
+sigma_vals = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2]
 
-pmut_intersect_experiments = itertools.product((.3, .8, .9, .95), (.05, .1, .25, ))
-
-brute_force_sweep = itertools.product(pcross, pmut_ind, pmut_gene)
-# print(len(list(brute_force_sweep)))
-for pcross_prob, pmut_ind_prob, pmut_gene_prob in brute_force_sweep:
-    params["pcross"] = pcross_prob
-    params["pmut_ind"] = pmut_ind_prob
-    params["pmut_gene"] = pmut_gene_prob
-    runExperiment(params,logFile,"pcross={} | pmut_ind={} | pmut_gene{}".format(pcross_prob, pmut_ind_prob, pmut_gene_prob))
+for sigma in sigma_vals:
+    params["sigma"] = sigma
+    runExperiment(params,logFile,"default".format())
 
