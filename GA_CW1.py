@@ -1,4 +1,4 @@
-import itertools
+from itertools import product
 import os
 import random
 import statistics
@@ -109,7 +109,7 @@ def runExperiment(params,logFile,label):
     # time the script
     start = time.time()
 
-    nreps = 30
+    nreps = 50
     best_reps = []
     best_its = {}
     # convergences = {}
@@ -148,26 +148,208 @@ def runExperiment(params,logFile,label):
 # Create an empty data frame to initialise the CSV file
 # by Convergence we mean the standard deviation of all points in each dimensions. The average value of each dimensional std. dev is taken for a single convergence number
 # df = pd.DataFrame(columns=["It","AveBestFitness","AvgConvergence", "ConfidenceInterval", "ExperimentName"])
-df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
-logName = "sigma"
-outdir = "GA_Second-Sweep_Logs"
-logFile = f"{outdir}/trace-{logName}.csv"
+outdir = "GA_Interaction-Sweeps2_Logs"
 if not os.path.exists(outdir):
     os.mkdir(outdir)
-df.to_csv(logFile,index=False)
 
 # Create the parameters data structure
 params = initParams()
 
 # As an example, we will perform a parameter sweep for the probability of crossover
-popsize_iterations_vals = [(100000, 1), (5000, 2), (2500, 4), (1000, 10), (500, 20), (250, 40), (100, 100), (50, 200), (25, 400), (10, 1000)]
-pcross_vals = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99]
-pmut_ind_vals = [0.01, 0.1, 0.3, .5, .6, .7, 7.5, .8, .85, .9, .95, .99]
-pmut_gene_vals = [.001, .0025, .005, .01, .025, .05, .1, .25, .5]
-tournsize_vals = [1, 2, 3, 5, 10, 25, 50, 75, 90]
-sigma_vals = [0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2]
+popsize_iterations_vals = [(1000, 10), (500, 20), (250, 40), (200, 50), (150, 66), (100, 100), (66, 150), (50, 200), (25, 400), (10, 1000)]
+pcross_vals = [0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.99, 0.999, 1]
+pmut_ind_vals = [.5, .6, .7, .75, .775, .8, .825, .85, .9, .95, .99, 1]
+pmut_gene_vals = [.01, .025, .05, .075, .09, .1, .15, .25, .5]
+tournsize_vals = [2, 3, 4, 5, 6, 10, 25, 50, 75]
+sigma_vals = [0.5, 0.6, 0.75, 0.8, 0.9, 1, 1.5, 2]
 
-for sigma in sigma_vals:
+# Baseline variables
+base_popsize_iterations = (100, 100)
+base_pcross = 1
+base_pmut_ind = 0.95
+base_pmut_gene = 0.1
+base_tournsize = 0.125
+base_sigma = 0.5
+
+mut_ind_values = [0.7, 0.8, 0.9, 0.95]      # individual mutation probability
+mut_gene_values = [0.05, 0.075, 0.1, 0.125]   # per-gene mutation probability
+sigma_values = [0.25, 0.5, 1, 1.5]                      # mutation magnitude
+tournament_sizes = [0.04, 0.125, 0.15, 0.175, 0.2, 0.25]  # decimal
+crossover_values = [0, 1]               # binary
+
+mut_interactions = list(product(mut_ind_values, mut_gene_values))
+mut_sigma_interactions = list(product(mut_ind_values, sigma_values))
+mutgene_sigma_interactions = list(product(mut_gene_values, sigma_values))
+tourn_crossover_interactions = list(product(tournament_sizes, crossover_values))
+
+logName = "mut_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_ind, pmut_gene in mut_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = pmut_ind
+    params["pmut_gene"] = pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = base_sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tONE TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+logName = "mut_sigma_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_ind, sigma in mut_sigma_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = pmut_ind
+    params["pmut_gene"] = base_pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
     params["sigma"] = sigma
-    runExperiment(params,logFile,"default".format())
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tTWO TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+
+logName = "mutgene_sigma_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_gene, sigma in mutgene_sigma_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = base_pmut_ind
+    params["pmut_gene"] = pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tTHREE TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+
+logName = "tourn_crossover_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for tournsize, pcross in tourn_crossover_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = pcross
+    params["pmut_ind"] = base_pmut_ind
+    params["pmut_gene"] = base_pmut_gene
+    params["tournsize"] = int(round(tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = base_sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tFOUR TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+
+
+logName = "baseline"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+params["popSize"] = base_popsize_iterations[0]
+params["iterations"] = base_popsize_iterations[1]
+params["pcross"] = base_pcross
+params["pmut_ind"] = base_pmut_ind
+params["pmut_gene"] = base_pmut_gene
+params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+params["sigma"] = base_sigma
+
+runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+
+outdir = "GA_High-Population-Interaction-Sweeps2_Logs"
+if not os.path.exists(outdir):
+    os.mkdir(outdir)
+base_popsize_iterations = (200, 50)
+logName = "mut_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_ind, pmut_gene in mut_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = pmut_ind
+    params["pmut_gene"] = pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = base_sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tFIVE TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+logName = "mut_sigma_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_ind, sigma in mut_sigma_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = pmut_ind
+    params["pmut_gene"] = base_pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tSIX TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+
+logName = "mutgene_sigma_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for pmut_gene, sigma in mutgene_sigma_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = base_pcross
+    params["pmut_ind"] = base_pmut_ind
+    params["pmut_gene"] = pmut_gene
+    params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+print("------------------------------------------------------------------------------------------------------------------\n\t\t\tSEVEN TEST COMPLETE\n------------------------------------------------------------------------------------------------------------------")
+
+logName = "tourn_crossover_interactions"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+for tournsize, pcross in tourn_crossover_interactions:
+    params["popSize"] = base_popsize_iterations[0]
+    params["iterations"] = base_popsize_iterations[1]
+    params["pcross"] = pcross
+    params["pmut_ind"] = base_pmut_ind
+    params["pmut_gene"] = base_pmut_gene
+    params["tournsize"] = int(round(tournsize * base_popsize_iterations[0],0))
+    params["sigma"] = base_sigma
+
+    runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
+
+
+logName = "baseline"
+logFile = f"{outdir}/trace-{logName}.csv"
+df = pd.DataFrame(columns=["It","AveBestFitness", "ExperimentName"])
+df.to_csv(logFile,index=False)
+
+params["popSize"] = base_popsize_iterations[0]
+params["iterations"] = base_popsize_iterations[1]
+params["pcross"] = base_pcross
+params["pmut_ind"] = base_pmut_ind
+params["pmut_gene"] = base_pmut_gene
+params["tournsize"] = int(round(base_tournsize * base_popsize_iterations[0],0))
+params["sigma"] = base_sigma
+
+runExperiment(params,logFile,f"popSize={params["popSize"]} | iterations={params["iterations"]} | pcross={params["pcross"]} | pmut_ind={params["pmut_ind"]} | pmut_gene={params["pmut_gene"]} | tournsize={params["tournsize"]/params["popSize"]*100}% | sigma={params["sigma"]}")
 
